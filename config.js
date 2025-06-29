@@ -9,10 +9,10 @@ const Nunjucks = require('nunjucks');
 
 class Config {
 	static #staticCache = null;
-	#cache = null;
 	#loadingPromise = null;
 	#nunjucks = null;
 	#client = null;
+	#pathCache = {};
 
 	constructor (vars = {}, opts = {}) {
 		this.vars = vars;
@@ -96,66 +96,78 @@ class Config {
 		console.log(`[CONFIG] Config read took ${Date.now() - st}ms`);
 
 		const config = await this.processTemplate(result, vars)
+		if (process.env.OP_CONFIG_CACHE) {
+			const cacheFileName = path.resolve(process.cwd(), opts.defaultCacheFile || './config.cache');
+			console.debug(`[CONFIG] Caching config to ${cacheFileName} for ${process.env.OP_CONFIG_CACHE} seconds`);
+			const salt = crypto.randomBytes(16).toString('hex');
+			const key = crypto.scryptSync(process.env.OP_SERVICE_ACCOUNT_TOKEN, salt, 32);
+			fs.promises.writeFile(cacheFileName, this.encrypt(JSON.stringify(this.#pathCache), key) + ':' + salt, 'utf8');
+			setTimeout(() => {
+				fs.promises.unlink(cacheFileName).catch((e) => {});
+			}, process.env.OP_CONFIG_CACHE * 1000);
+		}
+
 		return toml.parse(config);
 	}
 
+	async read1Password (path) {
+		if (this.#pathCache[path]) return this.#pathCache[path];
+		try {
+			console.debug(`[CONFIG] Fetching path from 1Password: ${path}`);
+			const result = await this.#client.secrets.resolve(path);
+			this.#pathCache[path] = result;
+			return result;
+		} catch (e) {
+			console.error(`[CONFIG] Error fetching path from 1Password: ${path}`, e);
+			throw e;
+		}
+	}
+
 	async readWrapped (opts = {}) {
+
 		if (this.#loadingPromise) return await this.#loadingPromise;
 
-		const standardConfigFilename = path.resolve(process.cwd(), opts.defaultConfigFile || './config.toml');
 		const cacheFileName = path.resolve(process.cwd(), opts.defaultCacheFile || './config.cache');
 
 		let encryptedData = null;
-		let salt = crypto.randomBytes(16).toString('hex');
-		try {
-			this.#cache = '' + fs.readFileSync(standardConfigFilename);
-			console.log(`[CONFIG] ${standardConfigFilename} found, using it`);
-			return this.#cache;
-		} catch (e) {
-			console.debug(`[CONFIG] ${standardConfigFilename} not found`);
-		}
+		let salt = null;
 
 		if (!process.env.OP_CONFIG_PATH) {
 			const msg = `[CONFIG] env.OP_CONFIG_PATH environment variable is not set, OP_CONFIG_PATH=ops://<vault-name>/<item-name>/<field-name>`;
 			throw new Error(msg);
 		}
-		
 		try {
 			const encryptedFileContents = await fs.promises.readFile(cacheFileName, 'utf8');
 			if (encryptedFileContents) [encryptedData, salt] = encryptedFileContents.split(':');
+			let key = crypto.scryptSync(process.env.OP_SERVICE_ACCOUNT_TOKEN, salt, 32);
+			if (encryptedData) {
+				try {
+					this.#pathCache = JSON.parse(this.decrypt(encryptedData.toString('utf8'), key));
+					console.log('[CONFIG] encrypted config cache found, using it');
+				} catch (e) {
+					console.debug('[CONFIG] ERROR Reading encrypted contents', e);
+				}
+			}
 		} catch (e) {
 			console.debug(`[CONFIG] ${cacheFileName} not found`);
 		}
-		let key = crypto.scryptSync(process.env.OP_SERVICE_ACCOUNT_TOKEN, salt, 32);
 
-		setTimeout(() => {
-			fs.promises.unlink(cacheFileName).catch((e) => {});
-		}, process.env.OP_CONFIG_CACHE * 1000);
-		if (encryptedData) {
-			try {
-				this.#cache = this.decrypt(encryptedData.toString('utf8'), key);
-				console.log('[CONFIG] encrypted config cache found, using it');
-				return this.#cache;
-			} catch (e) {
-				console.debug('[CONFIG] ERROR Reading encrypted contents', e);
-			}
+		const standardConfigFilename = path.resolve(process.cwd(), opts.defaultConfigFile || './config.toml');
+		try {
+			const config = '' + fs.readFileSync(standardConfigFilename);
+			console.log(`[CONFIG] ${standardConfigFilename} found, using it`);
+			return config;
+		} catch (e) {
+			console.debug(`[CONFIG] ${standardConfigFilename} not found`);
 		}
 
-		console.debug(`[CONFIG] Fetching: ${process.env.OP_CONFIG_PATH}`)
-		const configRaw = await this.#client.secrets.resolve(process.env.OP_CONFIG_PATH);
-		if (process.env.OP_CONFIG_CACHE) {
-			console.debug(`[CONFIG] Caching config to ${cacheFileName} for ${process.env.OP_CONFIG_CACHE} seconds`);
-			fs.promises.writeFile(cacheFileName, this.encrypt(configRaw, key) + ':' + salt, 'utf8');
-		}
-		this.#cache = configRaw;
-		return configRaw;
+		return await this.read1Password(process.env.OP_CONFIG_PATH)
 	}
 
 	async processTemplate (template, vars) {
 		this.#nunjucks.addFilter('op', async (path, callback) => {
 			try {
-				console.debug(`[CONFIG] Fetching path from 1Password: ${path}`);
-				const result = await this.#client.secrets.resolve(path);
+				const result = await this.read1Password(process.env.OP_CONFIG_PATH)
 				callback(null, result);
 			} catch (e) {
 				console.error(`[CONFIG] Error fetching path from 1Password: ${path}`, e);
