@@ -54,11 +54,6 @@ class Config {
 			throw new Error('[CONFIG] env.OP_SERVICE_ACCOUNT_TOKEN environment variable is not set.');
 		}
 
-		if (!process.env.OP_CONFIG_PATH) {
-			const msg = `[CONFIG] env.OP_CONFIG_PATH environment variable is not set, OP_CONFIG_PATH=ops://<vault-name>/<item-name>/<field-name>`;
-			throw new Error(msg);
-		}
-
 		let result = null;
 		// Add a race here with a 10 second timeout warning
 		// Add a 30 second timeout to the promise
@@ -95,6 +90,11 @@ class Config {
 			return this.#cache;
 		} catch (e) {
 			console.debug(`[CONFIG] ${standardConfigFilename} not found`);
+		}
+
+		if (!process.env.OP_CONFIG_PATH) {
+			const msg = `[CONFIG] env.OP_CONFIG_PATH environment variable is not set, OP_CONFIG_PATH=ops://<vault-name>/<item-name>/<field-name>`;
+			throw new Error(msg);
 		}
 		
 		try {
