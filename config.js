@@ -61,7 +61,9 @@ class Config {
 	static async read (vars = {}, opts = {}) {
 		if (Config.#staticCache) return JSON.parse(JSON.stringify(Config.#staticCache));
 		const instance = new Config(vars, opts);
-		return await instance.read()
+		const config = await instance.read(vars, opts);
+		Config.#staticCache = config;
+		return config;
 	};
 
 	async read (vars = {}, opts = {}) {
