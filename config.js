@@ -18,26 +18,6 @@ class Config {
 		this.vars = vars;
 		this.opts = opts;
 
-		const packageJsonFilename = path.resolve(process.cwd(), './package.json');
-		const packageJson = require(packageJsonFilename);
-		if (!packageJson.name || !packageJson.version) {
-			throw new Error(`[CONFIG] package.json is missing name or version, please add them to ${packageJsonFilename}`);
-		}
-		createClient({
-			auth: process.env.OP_SERVICE_ACCOUNT_TOKEN,
-			integrationName: packageJson.name,
-			integrationVersion: "v" + packageJson.version,
-		}).then(client => {
-			this.#client = client;
-		}).catch((e) => {
-			console.error('[CONFIG] Error creating 1Password client:', e)
-			this.#client = e;
-		});
-		loopWhile(() => this.#client === null, 10);
-		if (this.#client instanceof Error) {
-			throw this.#client;
-		}
-
 		Nunjucks.installJinjaCompat();
 		this.#nunjucks = Nunjucks.configure('views', {
 			async: true,
@@ -65,6 +45,11 @@ class Config {
 		Config.#staticCache = config;
 		return config;
 	};
+
+	static readLoaded () {
+		if (Config.#staticCache) return JSON.parse(JSON.stringify(Config.#staticCache));
+		throw new Error('[CONFIG] Config has not been loaded yet, please call Config.read() asynchronously first');
+	}
 
 	async read (vars = {}, opts = {}) {
 		const st = Date.now()
@@ -114,7 +99,8 @@ class Config {
 		if (this.#pathCache[path]) return this.#pathCache[path];
 		try {
 			console.debug(`[CONFIG] Fetching path from 1Password: ${path}`);
-			const result = await this.#client.secrets.resolve(path);
+			const client = await this.#getOnePassClient();
+			const result = await client.secrets.resolve(path);
 			this.#pathCache[path] = result;
 			return result;
 		} catch (e) {
@@ -208,6 +194,21 @@ class Config {
 		decrypted += decipher.final('utf8');
 
 		return decrypted;
+	}
+
+	async #getOnePassClient () {
+		if (this.#client) return this.#client;
+		const packageJsonFilename = path.resolve(process.cwd(), './package.json');
+		const packageJson = require(packageJsonFilename);
+		if (!packageJson.name || !packageJson.version) {
+			throw new Error(`[CONFIG] package.json is missing name or version, please add them to ${packageJsonFilename}`);
+		}
+		this.#client = await createClient({
+			auth: process.env.OP_SERVICE_ACCOUNT_TOKEN,
+			integrationName: packageJson.name,
+			integrationVersion: "v" + packageJson.version,
+		})
+		return this.#client;
 	}
 }
 
