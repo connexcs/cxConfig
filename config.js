@@ -59,7 +59,6 @@ class Config {
 			throw new Error(msg);
 		}
 
-
 		let result = null;
 		// Add a race here with a 10 second timeout warning
 		// Add a 30 second timeout to the promise

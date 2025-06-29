@@ -53,7 +53,7 @@ To prevent this, enable encrypted local caching by setting:
 OP_CONFIG_CACHE=300
 ```
 
-This caches the config file for 300 seconds. It’s encrypted using the same key that grants access to the service account. You can also set an `OP_CACHE_IV` to use a fixed IV (optional but useful for testing).
+This caches the config file for 300 seconds. It’s encrypted using the same key that grants access to the service account. You can also set an `OP_CACHE_IV` to use a fixed IV.
 
 ---
 
@@ -68,6 +68,7 @@ This caches the config file for 300 seconds. It’s encrypted using the same key
 
 Create a `.env` file in your project root:
 
+**.env**
 ```dotenv
 OP_SERVICE_ACCOUNT_TOKEN="ops_...a4bd"
 OP_CONFIG_PATH="op://my-vault/my-item.toml/notes"
