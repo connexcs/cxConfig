@@ -1,0 +1,36 @@
+{
+  "name": "cx-config",
+  "version": "0.0.1",
+  "description": "Caching 1Password with env variable templating / injection",
+  "main": "config.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/connexcs/cxConfig.git"
+  },
+  "keywords": [
+    "config",
+    "1password",
+    "ansible",
+    "dotenv",
+    "nunjucks",
+    "toml",
+    "environment variables",
+    "env"
+  ],
+  "author": "Jonathan Hulme <jhulme@connexcs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/connexcs/cxConfig/issues"
+  },
+  "homepage": "https://github.com/connexcs/cxConfig#readme",
+  "dependencies": {
+    "@1password/sdk": "^0.3.1",
+    "deasync": "^0.1.30",
+    "dotenv": "^17.0.0",
+    "nunjucks": "^3.2.4",
+    "toml": "^3.0.0"
+  }
+}
