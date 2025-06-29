@@ -12,10 +12,32 @@ class Config {
 	#cache = null;
 	#loadingPromise = null;
 	#nunjucks = null;
+	#client = null;
 
 	constructor (vars = {}, opts = {}) {
 		this.vars = vars;
 		this.opts = opts;
+
+		const packageJsonFilename = path.resolve(process.cwd(), './package.json');
+		const packageJson = require(packageJsonFilename);
+		if (!packageJson.name || !packageJson.version) {
+			throw new Error(`[CONFIG] package.json is missing name or version, please add them to ${packageJsonFilename}`);
+		}
+		createClient({
+			auth: process.env.OP_SERVICE_ACCOUNT_TOKEN,
+			integrationName: packageJson.name,
+			integrationVersion: "v" + packageJson.version,
+		}).then(client => {
+			this.#client = client;
+		}).catch((e) => {
+			console.error('[CONFIG] Error creating 1Password client:', e)
+			this.#client = e;
+		});
+		loopWhile(() => this.#client === null, 10);
+		if (this.#client instanceof Error) {
+			throw this.#client;
+		}
+
 		Nunjucks.installJinjaCompat();
 		this.#nunjucks = Nunjucks.configure('views', {
 			async: true,
@@ -80,7 +102,6 @@ class Config {
 
 		const standardConfigFilename = path.resolve(process.cwd(), opts.defaultConfigFile || './config.toml');
 		const cacheFileName = path.resolve(process.cwd(), opts.defaultCacheFile || './config.cache');
-		const packageJsonFilename = path.resolve(process.cwd(), './package.json');
 
 		let encryptedData = null;
 		let salt = crypto.randomBytes(16).toString('hex');
@@ -117,15 +138,9 @@ class Config {
 				console.debug('[CONFIG] ERROR Reading encrypted contents', e);
 			}
 		}
-		const packageJson = require(packageJsonFilename);
 
-		const client = await createClient({
-			auth: process.env.OP_SERVICE_ACCOUNT_TOKEN,
-			integrationName: packageJson.name,
-			integrationVersion: "v" + packageJson.version,
-		});
 		console.debug(`[CONFIG] Fetching: ${process.env.OP_CONFIG_PATH}`)
-		const configRaw = await client.secrets.resolve(process.env.OP_CONFIG_PATH);
+		const configRaw = await this.#client.secrets.resolve(process.env.OP_CONFIG_PATH);
 		if (process.env.OP_CONFIG_CACHE) {
 			console.debug(`[CONFIG] Caching config to ${cacheFileName} for ${process.env.OP_CONFIG_CACHE} seconds`);
 			fs.promises.writeFile(cacheFileName, this.encrypt(configRaw, key) + ':' + salt, 'utf8');
@@ -135,14 +150,16 @@ class Config {
 	}
 
 	async processTemplate (template, vars) {
-		this.#nunjucks.addGlobal('op', async function(path, callback) {
+		this.#nunjucks.addFilter('op', async (path, callback) => {
 			try {
-				const result = await client.secrets.resolve(path);
+				console.debug(`[CONFIG] Fetching path from 1Password: ${path}`);
+				const result = await this.#client.secrets.resolve(path);
 				callback(null, result);
 			} catch (e) {
+				console.error(`[CONFIG] Error fetching path from 1Password: ${path}`, e);
 				callback(e);
 			}
-		});
+		}, true);
 		return new Promise((resolve, reject) => {
 			this.#nunjucks.renderString(template, vars, (err, res) => {
 				if (err) return reject(err);

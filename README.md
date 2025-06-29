@@ -97,8 +97,7 @@ user = "{{ DB_USER }}"
 
 password = "{{ DB_PASSWORD }}"  # Will read from DB_HOST in .env
 # OR
-password = "{{ op('op://my-vault/my-app/password') }}" # Will read from 1password
-
+password = "{{ 'op://my-vault/my-app/password' | op }}" # Will read from 1password
 ```
 
 You can then set the corresponding `.env` values:
