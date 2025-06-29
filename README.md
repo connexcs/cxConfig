@@ -80,22 +80,25 @@ OP_CACHE_IV="d090bf1bf66a39f6589fe25a377927f3"
 
 ### 3. Accessing the Configuration
 
-```ts
-const Config = require('./config.js');
-
-console.log(Config.readSync());
+```js
+const config = require('cx-config').readSync();
+console.log(config)
 ```
 
 ---
 
-## 🧪 Example TOML (Stored in 1Password)
+## 🧪 Example TOML (Stored in 1Password or locally) 
 
 ```toml
 [database]
 host = "{{ DB_HOST }}"
 port = {{ DB_PORT }}
 user = "{{ DB_USER }}"
-password = "{{ DB_PASSWORD }}"
+
+password = "{{ DB_PASSWORD }}"  # Will read from DB_HOST in .env
+# OR
+password = "{{ op('op://my-vault/my-app/password') }}" # Will read from 1password
+
 ```
 
 You can then set the corresponding `.env` values:
@@ -105,16 +108,6 @@ DB_HOST=db.internal
 DB_PORT=5432
 DB_USER=admin
 DB_PASSWORD=supersecret
-```
-
-Nested Variables
-
-```toml
-[database]
-host = "{{ op('op://my-vault/my-app/host') }}"
-port = {{ op('op://my-vault/my-app/port') }}
-user = "{{ op('op://my-vault/my-app/username') }}"
-password = "{{ op('op://my-vault/my-app/password') }}"
 ```
 
 ---
