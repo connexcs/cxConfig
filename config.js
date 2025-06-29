@@ -3,7 +3,6 @@ const toml = require('toml');
 const fs = require('fs');
 const { createClient } = require('@1password/sdk');
 const crypto = require('crypto');
-const IV = Buffer.from(process.env.OP_CACHE_IV, 'hex');
 const {loopWhile} = require('deasync')
 const path = require('path');
 const Nunjucks = require('nunjucks');
@@ -45,6 +44,22 @@ class Config {
 
 	async read (vars = {}, opts = {}) {
 		const st = Date.now()
+
+		if (!process.env.OP_CACHE_IV) {
+			const msg = `[CONFIG] env.OP_CACHE_IV environment variable is not set, here is a new IV: OP_CACHE_IV=${crypto.randomBytes(16).toString('hex')}`;
+			throw new Error(msg);
+		}
+
+		if (!process.env.OP_SERVICE_ACCOUNT_TOKEN) {
+			throw new Error('[CONFIG] env.OP_SERVICE_ACCOUNT_TOKEN environment variable is not set.');
+		}
+
+		if (!process.env.OP_CONFIG_PATH) {
+			const msg = `[CONFIG] env.OP_CONFIG_PATH environment variable is not set, OP_CONFIG_PATH=ops://<vault-name>/<item-name>/<field-name>`;
+			throw new Error(msg);
+		}
+
+
 		let result = null;
 		// Add a race here with a 10 second timeout warning
 		// Add a 30 second timeout to the promise
@@ -71,7 +86,7 @@ class Config {
 
 		const standardConfigFilename = path.resolve(process.cwd(), opts.defaultConfigFile || './config.toml');
 		const cacheFileName = path.resolve(process.cwd(), opts.defaultCacheFile || './config.cache');
-		const packageJsonFilename = path.resolve(process.cwd(), opts.defaultCacheFile || './package.json');
+		const packageJsonFilename = path.resolve(process.cwd(), './package.json');
 
 		let encryptedData = null;
 		let salt = crypto.randomBytes(16).toString('hex');
@@ -138,6 +153,7 @@ class Config {
 	}
 
 	encrypt (text, key) {
+		const IV = Buffer.from(process.env.OP_CACHE_IV, 'hex');
 		// Generate a random initialization vector
 
 		// Create cipher with AES-256-CBC
@@ -153,6 +169,7 @@ class Config {
 
 	// Function to decrypt data
 	decrypt (encryptedData,  key) {
+		const IV = Buffer.from(process.env.OP_CACHE_IV, 'hex');
 		// Create decipher
 		const decipher = crypto.createDecipheriv('aes-256-cbc', key, IV	);
 
