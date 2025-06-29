@@ -137,7 +137,7 @@ class Config {
 	async processTemplate (template, vars) {
 		this.#nunjucks.addGlobal('op', async function(path, callback) {
 			try {
-				const result = await client.secrets.resolve(process.env.OP_CONFIG_PATH);
+				const result = await client.secrets.resolve(path);
 				callback(null, result);
 			} catch (e) {
 				callback(e);
