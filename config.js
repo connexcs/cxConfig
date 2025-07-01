@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const {loopWhile} = require('deasync')
 const path = require('path');
 const Nunjucks = require('nunjucks');
+const { env } = require('process');
 
 class Config {
 	static #staticCache = null;
@@ -15,7 +16,7 @@ class Config {
 	#pathCache = {};
 
 	constructor (vars = {}, opts = {}) {
-		this.vars = vars;
+		this.vars = {...process.env, ...vars};
 		this.opts = opts;
 
 		Nunjucks.installJinjaCompat();
@@ -80,7 +81,7 @@ class Config {
 		});
 		console.log(`[CONFIG] Config read took ${Date.now() - st}ms`);
 
-		const config = await this.processTemplate(result, vars)
+		const config = await this.processTemplate(result, {...process.env, ...vars})
 		if (process.env.OP_CONFIG_CACHE) {
 			const cacheFileName = path.resolve(process.cwd(), opts.defaultCacheFile || './config.cache');
 			console.debug(`[CONFIG] Caching config to ${cacheFileName} for ${process.env.OP_CONFIG_CACHE} seconds`);
