@@ -16,7 +16,7 @@ It’s designed to preserve the flexibility of dynamic configuration files while
 * 📄 Supports TOML configuration files
 * 🔁 Nunjucks-style variable templating (similar to Ansible's Jinja2)
 * 🧊 Encrypted local caching to avoid hitting 1Password rate limits in the event of failure.
-* 🧵 Fully synchronous config loading (ideal for early bootstrapping)
+* 🧵 Optional synchronous config loading (using deasync)
 
 ---
 
@@ -81,8 +81,18 @@ OP_CACHE_IV="d090bf1bf66a39f6589fe25a377927f3"
 ### 3. Accessing the Configuration
 
 ```js
-const config = require('cx-config').readSync();
+// Async only needs to happen in the initial script
+const config = await require('cx-config').read();
 console.log(config)
+
+// all other files (loaded after the promise)
+const config = require('cx-config').readLoaded();
+
+// --
+
+// Alternative (Not suitable for forked/clustered processes, e.g pm2 cluster mode)
+const config = await require('cx-config').deaSyncRead();
+
 ```
 
 ---

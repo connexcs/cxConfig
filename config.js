@@ -24,7 +24,7 @@ class Config {
 		});
 	}
 
-	static readSync (vars = {}, opts) {
+	static deaSyncRead (vars = {}, opts) {
 		if (Config.#staticCache) return JSON.parse(JSON.stringify(Config.#staticCache));
 		var data = null;
 		Config.read(vars, opts).then((d) => {
