@@ -1,6 +1,6 @@
 {
   "name": "cx-config",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Caching 1Password with env variable templating / injection",
   "main": "config.js",
   "scripts": {
