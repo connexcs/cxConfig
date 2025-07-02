@@ -56,7 +56,7 @@ class Config {
 		const st = Date.now()
 
 		if (!process.env.OP_CACHE_IV) {
-			const msg = `[CONFIG] env.OP_CACHE_IV environment variable is not set, here is a new IV: OP_CACHE_IV=${crypto.randomBytes(16).toString('hex')}`;
+			const msg = `[CONFIG] env.OP_CACHE_IV environment variable is not set, here is a new IV: OP_CACHE_IV="${crypto.randomBytes(16).toString('hex')}"`;
 			throw new Error(msg);
 		}
 
