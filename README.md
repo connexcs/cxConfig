@@ -147,6 +147,14 @@ Now:
 
 ---
 
+## 🐞 Debugging
+
+```
+CX_CONFIG_DUMP=true node my-app.js
+```
+
+---
+
 ## 📄 License
 
 MIT License

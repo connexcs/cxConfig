@@ -93,6 +93,10 @@ class Config {
 			}, process.env.OP_CONFIG_CACHE * 1000);
 		}
 
+		if (process.env.CX_CONFIG_DUMP){
+			console.debug(`[CONFIG] DUMP`, config);
+		}
+
 		return toml.parse(config);
 	}
 
