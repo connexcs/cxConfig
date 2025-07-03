@@ -140,3 +140,5 @@ vite.config.ts.timestamp-*
 
 config.cache
 config.toml
+
+test.js
